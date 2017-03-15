@@ -1,0 +1,189 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ProjetoCorridaCubo.BO
+{
+    public class PilotoBO
+    {
+        private int _codigo_piloto;
+        public int CidigoPiloto
+        {
+            get { return _codigo_piloto; }
+            set { _codigo_piloto = value; }
+        }
+
+        private string _nome_piloto;
+        public string NomePiloto
+        {
+            get { return _nome; }
+            set 
+            {
+                _nome_piloto = value.Trim();
+
+                if (_nome_piloto.Length > 450)
+                {
+                    throw new Exception(" O tamanho do nome não deve ultrapassar 450 caracteres.");
+                }
+                else
+                {
+                    _nome_piloto = value;
+                }
+            }
+        }
+    }
+}
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using ProjetoCorridaCubo.BO;
+
+namespace ProjetoCorridaCubo.BO
+{
+    public class CorridaBO
+    {
+        private int _posicao_chegada;
+        public int PosicaoChegada
+        {
+            get { return _posicao_chegada; }
+            set { _posicao_chegada = value; }
+        }
+
+        private PilotoBO _codigo_piloto;
+        public PilotoBO CodigoPiloto
+        {
+            get { return _codigo_piloto; }
+            set { _codigo_piloto = value; }
+        }
+
+        private PilotoBO _nome_piloto;
+        public PilotoBO NomePiloto
+        {
+            get { return _nome_piloto; }
+            set { _nome_piloto = value; }
+        }
+
+        private int _qtde_voltas_completadas;
+        public int QtdeVoltasCompletadas
+        {
+            get { return _qtde_voltas_completadas; }
+            set { _qtde_voltas_completadas = value; }
+        }
+
+        private DateTime _tempo_total_prova;
+        public DateTime TempoTotalProva
+        {
+            get { return _tempo_total_prova; }
+            set { _tempo_total_prova = value; }
+        }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ProjetoCorridaCubo.Persistencia
+{
+    public class PilotoDAO
+    {
+        // metodo para finalizar corrida por piloto
+        // condicao se numero volta for igual a 4
+        public int FinalizaProva(PilotoBO piloto)
+        {
+            _minhaConexao = new ConexaoDAO();
+            int n_voltas = 0;
+
+            _sql = "select c.cod_piloto, p.nome_piloto, c.tempo_prova where n_voltas =" + 4 + "from tbl_corrida c inner join p.cod_piloto = c.cod_piloto";
+            
+            _cmd = new SqlCommand(_sql, _minhaConexao.conexao);
+            _linhasAlteradas = _cmd.ExecuteNonQuery();
+            _minhaConexao.Dispose();
+            return _linhasAlteradas;
+        }
+
+
+        // retona o codigo da melhor volta
+        public int MelhorVolta(PilotoBO piloto)
+        {
+            _minhaConexao = new ConexaoDAO();
+          
+            _sql = "select top 1 cod_piloto, nome_piloto, tempo_prova from tbl_corrida";
+
+            _cmd = new SqlCommand(_sql, _minhaConexao.conexao);
+            _linhasAlteradas = _cmd.ExecuteNonQuery();
+            _minhaConexao.Dispose();
+            return _linhasAlteradas;
+        }
+
+        // retorna a velocidade media por piloto
+        public DateTime VelocidadeMediaPiloto(PilotoBO piloto)
+        {
+            _minhaConexao = new ConexaoDAO();
+
+            _sql = "select Sum velocidade_media / num_volta from tbl_corrida where cod_piloto = " + piloto.cod_piloto;
+
+            _cmd = new SqlCommand(_sql, _minhaConexao.conexao);
+            _linhasAlteradas = _cmd.ExecuteNonQuery();
+            _minhaConexao.Dispose();
+            return _linhasAlteradas;
+        }
+
+        // Pega tempo piloto vencedor para calcular quanto cada piloto chegou depois do vencedor
+        public DateTime VelocidadePilotoVencedor(PilotoBO piloto)
+        {
+            _minhaConexao = new ConexaoDAO();
+
+            _sql = "select top 1 velocidade_media / num_volta from tbl_corrida where cod_piloto = " + piloto.cod_piloto +"and num_volta == 4";
+
+            _cmd = new SqlCommand(_sql, _minhaConexao.conexao);
+            _linhasAlteradas = _cmd.ExecuteNonQuery();
+            _minhaConexao.Dispose();
+            return _linhasAlteradas;
+        }
+
+        /// <summary>
+        /// ROTINA PARA VERIFICAR QUANTO TEMPO CADA PILOTO CHEGOU ATRAS DO VENCEDOR NO BANCO DE DADOS
+        /// </summary>
+        /// <param name="cod_piloto">COD_PILOTO</param>
+        /// <param name="tempo">TEMPO</param>
+        /// <param name="nome">NOME</param>
+        /// É NECESSARIO UM PARAMETRO (COD_PILOTO, TEMPO, NOME)
+        /// <returns></returns>
+        public ArrayList Busca(int cod_piloto, DateTime tempo_atras_vencedor, string nome)
+        {
+            ArrayList array = new ArrayList();
+            CorridaBO corridaBo;
+            PilotoBO pilotoBo;
+
+            DateTime tempo_piloto_vencedor = VelocidadePilotoVencedor();
+
+            if (cod_piloto != "")
+            {
+                _sql = "select cod_piloto, nome_piloto, tempo_corrida -" + tempo_piloto_vencedor + " from tbl_corrida where num_volta == 4";
+
+            using (_minhaConexao = new ConexaoDAO())
+            {
+                SqlDataReader reader = _minhaConexao.ExecutaLeitura(_sql);
+                while (reader.Read())
+                {
+                    pilotoBo = new ClienteBO();
+                    pilotoBo.CodPiloto = reader[0].ToString();
+                    pilotoBo.Nome = Convert.ToDateTime(reader[1]);
+                    var tempo_retrocesso = reader[2].ToString();
+                    array.Add(pilotoBo);
+                }
+                reader.Dispose();
+                return array;
+            }
+        }
+    }
+}
